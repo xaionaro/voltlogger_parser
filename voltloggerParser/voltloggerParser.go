@@ -1,4 +1,4 @@
-package voltloggerReader
+package voltloggerParser
 
 import (
 	"os"
@@ -21,9 +21,8 @@ type VoltloggerDumpRawHeader struct {
 	Reserved1	[480]byte
 }
 
-type VoltloggerDump struct {
+type VoltloggerDumpHeader struct {
 	DeviceName	string
-	Data		map[int64][]int
 }
 
 func get16(dumpFile *os.File) (r uint16, err error) {
@@ -31,11 +30,11 @@ func get16(dumpFile *os.File) (r uint16, err error) {
 	return r, err
 }
 
-func ParseVoltloggerDump(dumpPath string) (r VoltloggerDump, err error) {
+func ParseVoltloggerDump(dumpPath string, headerHandler func(VoltloggerDumpHeader, interface{})(error), rowHandler func(int64, []int, VoltloggerDumpHeader, interface{})(error), arg interface{}) (err error) {
 	// Openning the "dumpPath" as a file
 	dumpFile, err := os.Open(dumpPath)
 	if (err != nil) {
-		return r, err
+		return err
 	}
 	defer dumpFile.Close()
 
@@ -43,29 +42,37 @@ func ParseVoltloggerDump(dumpPath string) (r VoltloggerDump, err error) {
 	var raw VoltloggerDumpRawHeader
 	err = binary.Read(dumpFile, binary.LittleEndian, &raw)
 	if (err != nil) {
-		return r, fmt.Errorf("Cannot read dump: %v", err.Error())
+		return fmt.Errorf("Cannot read dump: %v", err.Error())
 	}
 
 	// Checking if the data of a known type
 	magicString := string(raw.Magic[:])
 	if (magicString != "voltlogger\000") {
-		return r, fmt.Errorf("The source is not a voltlogger dump (magic doesn't match: \"%v\" != \"voltlogger\")", magicString)
+		return fmt.Errorf("The source is not a voltlogger dump (magic doesn't match: \"%v\" != \"voltlogger\")", magicString)
 	}
 
 	if (raw.Version != 0) {
-		return r, fmt.Errorf("Unsupported dump version: %v", raw.Version)
+		return fmt.Errorf("Unsupported dump version: %v", raw.Version)
 	}
 	if (raw.Modificators != 0) {
-		return r, fmt.Errorf("Unsupported modificators bitmask: %o", raw.Modificators)
+		return fmt.Errorf("Unsupported modificators bitmask: %o", raw.Modificators)
 	}
 	if (raw.ChannelsNum == 0) {
-		return r, fmt.Errorf("Channels number is zero")
+		return fmt.Errorf("Channels number is zero")
+	}
+
+	// Filling the VoltloggerDump struct
+	var r VoltloggerDumpHeader
+	r.DeviceName = string(raw.DeviceName[:])
+
+	err = headerHandler(r, arg);
+	if (err != nil) {
+		return err;
 	}
 
 	// Parsing the Data
 
 	channelsNum := int(raw.ChannelsNum)
-	r.Data       = make(map[int64][]int)
 	var timestampGlobal int64
 	timestampGlobal = -1
 
@@ -93,25 +100,25 @@ func ParseVoltloggerDump(dumpPath string) (r VoltloggerDump, err error) {
 
 		}
 
-		values := make([]int, raw.ChannelsNum)
+		row := make([]int, raw.ChannelsNum)
 		for i:=0; i < channelsNum; i++ {
 			value, err := get16(dumpFile)
 			if (err != nil) {
 				break
 			}
-			values[i] = int(value)
+			row[i] = int(value)
 		}
 
-		r.Data[timestampGlobal] = values;
-
+		err = rowHandler(timestampGlobal, row, r, arg);
+		if (err != nil) {
+			return err;
+		}
 	}
 
 	if (err == io.EOF) {
 		err = nil
 	}
 
-	// Filling the VoltloggerDump struct
-	r.DeviceName = string(raw.DeviceName[:])
-
-	return r, err
+	return err
 }
+

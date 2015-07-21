@@ -8,12 +8,34 @@ import (
 	"devel.mephi.ru/dyokunev/voltlogger_parser/voltloggerParser"
 )
 
-func main() {
-	var dumpPath	string
-	var outputPath	string
+type printRow_arg struct {
+	outputPath	string
+}
 
-	getopt.StringVar(&dumpPath,	'i',	"dump-path")
-	getopt.StringVar(&outputPath,	'o',	"output-path").SetOptional()
+func handleHeader(h voltloggerParser.VoltloggerDumpHeader, arg_iface interface{}) (error) {
+	arg := arg_iface.(*printRow_arg)
+
+	if (arg.outputPath == "") {
+		now              := time.Now()
+		year, month, day := now.Date()
+		hour, min,   sec := now.Clock()
+		arg.outputPath    = fmt.Sprintf("%v_%v-%02v-%02v_%02v:%02v:%02v.csv", h.DeviceName, year, int(month), day, hour, min, sec)
+	}
+
+	return nil
+}
+
+func printRow(ts int64, row []int, h voltloggerParser.VoltloggerDumpHeader, arg_iface interface{}) (error) {
+	fmt.Printf("row[%v]: %v\n", ts, row);
+	return nil
+}
+
+func main() {
+	var dumpPath		string
+	var printRow_arg	printRow_arg
+
+	getopt.StringVar(&dumpPath,			'i',	"dump-path")
+	getopt.StringVar(&printRow_arg.outputPath,	'o',	"output-path").SetOptional()
 
 	getopt.Parse()
 	if (getopt.NArgs() > 0 || dumpPath == "") {
@@ -21,18 +43,11 @@ func main() {
 		os.Exit(-2)
 	}
 
-	dump, err := voltloggerReader.ParseVoltloggerDump(dumpPath)
+	err := voltloggerParser.ParseVoltloggerDump(dumpPath, handleHeader, printRow, &printRow_arg)
 	if (err != nil) {
 		fmt.Printf("Cannot parse the dump: %v\n", err.Error())
 		os.Exit(-1)
 	}
 
-	if (outputPath == "") {
-		now              := time.Now()
-		year, month, day := now.Date()
-		hour, min,   sec := now.Clock()
-		outputPath        = fmt.Sprintf("%v_%v-%02v-%02v_%02v:%02v:%02v.csv", dump.DeviceName, year, int(month), day, hour, min, sec)
-	}
-
-	fmt.Printf("%v %v %v\n", dumpPath, outputPath, dump)
+	fmt.Printf("%v %v\n", dumpPath, printRow_arg)
 }
