@@ -26,7 +26,7 @@ type VoltloggerDumpHeader struct {
 }
 
 func get16(dumpFile *os.File) (r uint16, err error) {
-	err = binary.Read(dumpFile, binary.LittleEndian, &r)
+	err = binary.Read(dumpFile, binary.BigEndian, &r)
 	return r, err
 }
 
@@ -40,7 +40,7 @@ func ParseVoltloggerDump(dumpPath string, headerHandler func(VoltloggerDumpHeade
 
 	// Reading binary header to a VoltloggerDumpRawHeader
 	var raw VoltloggerDumpRawHeader
-	err = binary.Read(dumpFile, binary.LittleEndian, &raw)
+	err = binary.Read(dumpFile, binary.BigEndian, &raw)
 	if (err != nil) {
 		return fmt.Errorf("Cannot read dump: %v", err.Error())
 	}
