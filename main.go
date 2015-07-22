@@ -26,7 +26,12 @@ func handleHeader(h voltloggerParser.VoltloggerDumpHeader, arg_iface interface{}
 }
 
 func printRow(ts int64, row []int, h voltloggerParser.VoltloggerDumpHeader, arg_iface interface{}) (error) {
-	fmt.Printf("row[%v]: %v\n", ts, row);
+	fmt.Printf("%v", ts)
+	rowLen := len(row)
+	for i:=0; i < rowLen; i++ {
+		fmt.Printf("\t%v", row[i])
+	}
+	fmt.Printf("\n")
 	return nil
 }
 

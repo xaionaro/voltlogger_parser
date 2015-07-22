@@ -4,6 +4,7 @@ import (
 	"os"
 	"io"
 	"fmt"
+	"strings"
 	"encoding/binary"
 )
 /*
@@ -63,7 +64,7 @@ func ParseVoltloggerDump(dumpPath string, headerHandler func(VoltloggerDumpHeade
 
 	// Filling the VoltloggerDump struct
 	var r VoltloggerDumpHeader
-	r.DeviceName = string(raw.DeviceName[:])
+	r.DeviceName = strings.Trim(string(raw.DeviceName[:]), "\000")
 
 	err = headerHandler(r, arg);
 	if (err != nil) {
