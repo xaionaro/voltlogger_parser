@@ -30,6 +30,7 @@ type VoltloggerDumpHeader struct {
 	DeviceName		string
 	NoClock			bool
 	BlockWriteClockDelay	int64
+	ChannelsNum		int;
 }
 
 func get16(dumpFile *os.File) (r uint16, err error) {
@@ -37,56 +38,70 @@ func get16(dumpFile *os.File) (r uint16, err error) {
 	return r, err
 }
 
-func ParseVoltloggerDump(dumpPath string, headerHandler func(VoltloggerDumpHeader, interface{})(error), rowHandler func(int64, []int, VoltloggerDumpHeader, interface{})(error), arg interface{}) (err error) {
+func ParseVoltloggerDump(dumpPath string, noHeaders bool, headerHandler func(VoltloggerDumpHeader, interface{})(error), rowHandler func(int64, []int, VoltloggerDumpHeader, interface{})(error), arg interface{}) (err error) {
+	var r VoltloggerDumpHeader
+
 	// Openning the "dumpPath" as a file
+	if (dumpPath == "-") {
+		dumpPath = "/dev/stdin"
+	}
+
 	dumpFile, err := os.Open(dumpPath)
 	if (err != nil) {
 		return err
 	}
 	defer dumpFile.Close()
 
-	// Reading binary header to a VoltloggerDumpRawHeader
-	var raw VoltloggerDumpRawHeader
-	err = binary.Read(dumpFile, binary.LittleEndian, &raw)
-	if (err != nil) {
-		return fmt.Errorf("Cannot read dump: %v", err.Error())
-	}
+	if (noHeaders) {
+		r.ChannelsNum = 1
+		r.NoClock     = false
+	} else {
 
-	// Checking if the data of a known type
-	magicString := string(raw.Magic[:])
-	if (magicString != "voltlogger\000") {
-		return fmt.Errorf("The source is not a voltlogger dump (magic doesn't match: \"%v\" != \"voltlogger\")", magicString)
-	}
+		// Reading binary header to a VoltloggerDumpRawHeader
+		var raw VoltloggerDumpRawHeader
+		err = binary.Read(dumpFile, binary.LittleEndian, &raw)
+		if (err != nil) {
+			return fmt.Errorf("Cannot read dump: %v", err.Error())
+		}
 
-	if (raw.Version != 0) {
-		return fmt.Errorf("Unsupported dump version: %v", raw.Version)
-	}
-	if ((raw.Modificators & 0xfe) != 0) {
-		return fmt.Errorf("Unsupported modificators bitmask: %o %o", raw.Modificators)
-	}
-	if (raw.ChannelsNum == 0) {
-		return fmt.Errorf("Channels number is zero")
-	}
+		// Checking if the data of a known type
+		magicString := string(raw.Magic[:])
+		if (magicString != "voltlogger\000") {
+			return fmt.Errorf("The source is not a voltlogger dump (magic doesn't match: \"%v\" != \"voltlogger\")", magicString)
+		}
 
-	// Filling the VoltloggerDump struct
-	var r VoltloggerDumpHeader
-	r.DeviceName		= strings.Trim(string(raw.DeviceName[:]), "\000")
-	r.NoClock		= (raw.Modificators & 0x01 != 0)
-	r.BlockWriteClockDelay	= int64(raw.BlockWriteClockDelay)
+		if (raw.Version != 0) {
+			return fmt.Errorf("Unsupported dump version: %v", raw.Version)
+		}
+		if ((raw.Modificators & 0xfe) != 0) {
+			return fmt.Errorf("Unsupported modificators bitmask: %o %o", raw.Modificators)
+		}
+		if (raw.ChannelsNum == 0) {
+			return fmt.Errorf("Channels number is zero")
+		}
 
-	err = headerHandler(r, arg);
-	if (err != nil) {
-		return err;
+		// Filling the VoltloggerDump struct
+		r.DeviceName		= strings.Trim(string(raw.DeviceName[:]), "\000")
+		r.NoClock		= (raw.Modificators & 0x01 != 0)
+		r.BlockWriteClockDelay	= int64(raw.BlockWriteClockDelay)
+
+		err = headerHandler(r, arg);
+		if (err != nil) {
+			return err;
+		}
+
+		r.ChannelsNum = int(raw.ChannelsNum)
 	}
 
 	// Parsing the Data
 
 	var pos int64
-	channelsNum := int(raw.ChannelsNum)
-	var timestampGlobal int64
+	var timestampGlobal   int64
+	var timestampLocalOld uint16
 	timestampGlobal = -1
 
 	for err = nil; err == nil; pos++ {
+
 		if (r.NoClock) {
 			timestampGlobal++
 		} else {
@@ -99,17 +114,17 @@ func ParseVoltloggerDump(dumpPath string, headerHandler func(VoltloggerDumpHeade
 				timestampGlobal = int64(timestampLocal)
 			} else {
 				var timestampLocalDiff int
-				timestampLocalOld := int16(timestampGlobal)
 				timestampLocalDiff = int(timestampLocal) - int(timestampLocalOld)
 				/*if (timestampLocalDiff*timestampLocalDiff > TIMESTAMP_WINDOW*TIMESTAMP_WINDOW) {
 					break
 				}*/
 
-				if (timestampLocalDiff <= 0) {
+				timestampLocalOld  = uint16(timestampLocal)
+				if (timestampLocalDiff < 0) {
 					timestampLocalDiff += (1 << 16)
 				}
 
-				timestampGlobal += int64(timestampLocalDiff);
+				timestampGlobal += int64(timestampLocalDiff)
 
 			}
 		}
@@ -118,8 +133,8 @@ func ParseVoltloggerDump(dumpPath string, headerHandler func(VoltloggerDumpHeade
 			timestampGlobal += r.BlockWriteClockDelay
 		}
 
-		row := make([]int, raw.ChannelsNum)
-		for i:=0; i < channelsNum; i++ {
+		row := make([]int, r.ChannelsNum)
+		for i:=0; i < r.ChannelsNum; i++ {
 			value, err := get16(dumpFile)
 			if (err != nil) {
 				break

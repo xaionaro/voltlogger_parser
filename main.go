@@ -37,10 +37,13 @@ func printRow(ts int64, row []int, h voltloggerParser.VoltloggerDumpHeader, arg_
 
 func main() {
 	var dumpPath		string
+	var noHeadersStr	string
+	var noHeaders		bool
 	var printRow_arg	printRow_arg
 
 	getopt.StringVar(&dumpPath,			'i',	"dump-path")
 	getopt.StringVar(&printRow_arg.outputPath,	'o',	"output-path").SetOptional()
+	getopt.StringVar(&noHeadersStr,			'n',	"no-headers").SetOptional()
 
 	getopt.Parse()
 	if (getopt.NArgs() > 0 || dumpPath == "") {
@@ -48,7 +51,13 @@ func main() {
 		os.Exit(-2)
 	}
 
-	err := voltloggerParser.ParseVoltloggerDump(dumpPath, handleHeader, printRow, &printRow_arg)
+	switch (noHeadersStr) {
+		case "1", "yes", "true":
+			noHeaders = true
+			break
+	}
+
+	err := voltloggerParser.ParseVoltloggerDump(dumpPath, noHeaders, handleHeader, printRow, &printRow_arg)
 	if (err != nil) {
 		fmt.Printf("Cannot parse the dump: %v\n", err.Error())
 		os.Exit(-1)
