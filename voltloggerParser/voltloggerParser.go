@@ -87,14 +87,14 @@ func ParseVoltloggerDump(dumpPath string, headerHandler func(VoltloggerDumpHeade
 	timestampGlobal = -1
 
 	for err = nil; err == nil; pos++ {
-		timestampLocal, err := get16(dumpFile)
-		if (err != nil) {
-			break
-		}
-
 		if (r.NoClock) {
 			timestampGlobal++
 		} else {
+			timestampLocal, err := get16(dumpFile)
+			if (err != nil) {
+				break
+			}
+
 			if (timestampGlobal < 0) {
 				timestampGlobal = int64(timestampLocal)
 			} else {
