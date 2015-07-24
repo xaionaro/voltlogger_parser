@@ -38,7 +38,7 @@ func get16(dumpFile *os.File) (r uint16, err error) {
 	return r, err
 }
 
-func ParseVoltloggerDump(dumpPath string, noHeaders bool, headerHandler func(VoltloggerDumpHeader, interface{})(error), rowHandler func(int64, []int, VoltloggerDumpHeader, interface{})(error), arg interface{}) (err error) {
+func ParseVoltloggerDump(dumpPath string, noHeaders bool, headerHandler func(VoltloggerDumpHeader, interface{})(error), rowHandler func(int64, []int32, VoltloggerDumpHeader, interface{})(error), arg interface{}) (err error) {
 	var r VoltloggerDumpHeader
 
 	// Openning the "dumpPath" as a file
@@ -133,18 +133,18 @@ func ParseVoltloggerDump(dumpPath string, noHeaders bool, headerHandler func(Vol
 			timestampGlobal += r.BlockWriteClockDelay
 		}
 
-		row := make([]int, r.ChannelsNum)
+		row := make([]int32, r.ChannelsNum)
 		for i:=0; i < r.ChannelsNum; i++ {
 			value, err := get16(dumpFile)
 			if (err != nil) {
 				break
 			}
-			row[i] = int(value)
+			row[i] = int32(value)
 		}
 
 		err = rowHandler(timestampGlobal, row, r, arg);
 		if (err != nil) {
-			return err;
+			return fmt.Errorf("Got an error from rowHandler: %v", err);
 		}
 	}
 
