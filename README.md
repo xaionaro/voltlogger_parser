@@ -4,7 +4,7 @@ The main repository: git clone [https://devel.mephi.ru/dyokunev/voltlogger_parse
 
 Compiling:
 
-    export GOPATH=$HOME:/gocode
+    export GOPATH=$HOME/gocode
     go get devel.mephi.ru/dyokunev/voltlogger_parser
     cd "$GOPATH/src/devel.mephi.ru/dyokunev/voltlogger_parser"
     make
