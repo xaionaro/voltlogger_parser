@@ -2,6 +2,14 @@ This code is supposed to parse data of voltlogger and [voltloggerA](https://deve
 
 The main repository: git clone [https://devel.mephi.ru/dyokunev/voltlogger_parser](https://devel.mephi.ru/dyokunev/voltlogger_parser)
 
+Compiling:
+
+    export GOPATH=$HOME:/gocode
+    go get devel.mephi.ru/dyokunev/voltlogger_parser
+    cd "$GOPATH/src/devel.mephi.ru/dyokunev/voltlogger_parser"
+    make
+    ./voltlogger_parser --help
+
 For example:
 
     socat -u udp-recv:30319 - | ./voltlogger_parser/voltlogger_parser -i - -n1 > ~/voltlogger.csv
