@@ -10,9 +10,9 @@ Compiling:
     make
     ./voltlogger_parser --help
 
-For example:
+Running example:
 
-    socat -u udp-recv:30319 - | ./voltlogger_parser/voltlogger_parser -i - -n1 > ~/voltlogger.csv
+    socat -u udp-recv:30319 - | ./voltlogger_parser/voltlogger_parser -i - -n > ~/voltlogger.csv
     ^C
     qtiplot ~/voltlogger.csv
 
