@@ -38,7 +38,7 @@ func get16(dumpFile *os.File) (r uint16, err error) {
 	return r, err
 }
 
-func ParseVoltloggerDump(dumpPath string, noHeaders bool, headerHandler func(VoltloggerDumpHeader, interface{})(error), rowHandler func(int64, []int32, VoltloggerDumpHeader, interface{})(error), arg interface{}) (err error) {
+func ParseVoltloggerDump(dumpPath string, noHeaders bool, channelsNum int, headerHandler func(VoltloggerDumpHeader, interface{})(error), rowHandler func(int64, []int32, VoltloggerDumpHeader, interface{})(error), arg interface{}) (err error) {
 	var r VoltloggerDumpHeader
 
 	// Openning the "dumpPath" as a file
@@ -91,6 +91,10 @@ func ParseVoltloggerDump(dumpPath string, noHeaders bool, headerHandler func(Vol
 		}
 
 		r.ChannelsNum = int(raw.ChannelsNum)
+	}
+
+	if (r.ChannelsNum > 0) {
+		r.ChannelsNum = channelsNum
 	}
 
 	// Parsing the Data

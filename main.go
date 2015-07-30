@@ -70,10 +70,12 @@ func main() {
 	var dumpPath		string
 	var noHeaders		bool
 	var printRow_arg	printRow_arg
+	var channelsNum		int
 
 	getopt.StringVar(&dumpPath,			'i',	"dump-path"		)
 	getopt.StringVar(&printRow_arg.outputPath,	'o',	"output-path"		).SetOptional()
 	getopt.BoolVar  (&noHeaders,			'n',	"no-headers"		).SetOptional()
+	getopt.IntVar   (&channelsNum,			'c',	"force-channels-num"	).SetOptional()
 	getopt.BoolVar  (&printRow_arg.binaryOutput,	'b',	"binary-output"		).SetOptional()
 	getopt.BoolVar  (&printRow_arg.insertParseTime,	't',	"insert-parse-time"	).SetOptional()
 
@@ -106,7 +108,7 @@ func main() {
 	//	err = binary.Write(printRow_arg.outputFile, binary.LittleEndian, printRow_arg)
 	//}
 
-	err = voltloggerParser.ParseVoltloggerDump(dumpPath, noHeaders, handleHeader, printRow, &printRow_arg)
+	err = voltloggerParser.ParseVoltloggerDump(dumpPath, noHeaders, channelsNum, handleHeader, printRow, &printRow_arg)
 	if (err != nil) {
 		fmt.Printf("Cannot parse the dump: %v\n", err.Error())
 		os.Exit(-1)
