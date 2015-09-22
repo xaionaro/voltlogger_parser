@@ -1,4 +1,4 @@
-This code is supposed to parse data of voltlogger and [voltloggerA](https://devel.mephi.ru/dyokunev/voltloggerA).
+This code is supposed to parse data of voltlogger, [voltloggerA](https://devel.mephi.ru/dyokunev/voltloggerA) and [nucleo-f411-sd-logger](https://devel.mephi.ru/dyokunev/nucleo-f411-sd-logger).
 
 The main repository: git clone [https://devel.mephi.ru/dyokunev/voltlogger_parser](https://devel.mephi.ru/dyokunev/voltlogger_parser)
 
