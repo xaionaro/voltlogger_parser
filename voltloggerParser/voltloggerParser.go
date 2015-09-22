@@ -18,7 +18,7 @@ const (
 type VoltloggerDumpRawHeader struct {
 	Version			byte
 	Magic			[11]byte
-	Modificators		byte
+	Modificators		byte		// Bit: 1 — NoClock; 2 — Bitness8ADC; the rest is reserved
 	ChannelsNum		byte
 	BlockWriteClockDelay	byte
 	Reserved0		[1]byte
@@ -29,11 +29,17 @@ type VoltloggerDumpRawHeader struct {
 type VoltloggerDumpHeader struct {
 	DeviceName		string
 	NoClock			bool
+	Bitness8ADC		bool
 	BlockWriteClockDelay	int64
-	ChannelsNum		int;
+	ChannelsNum		int
 }
 
 func get16(dumpFile *os.File) (r uint16, err error) {
+	err = binary.Read(dumpFile, binary.LittleEndian, &r)
+	return r, err
+}
+
+func get8(dumpFile *os.File)  (r uint8, err error) {
 	err = binary.Read(dumpFile, binary.LittleEndian, &r)
 	return r, err
 }
@@ -73,7 +79,7 @@ func ParseVoltloggerDump(dumpPath string, noHeaders bool, channelsNum int, heade
 		if (raw.Version != 0) {
 			return fmt.Errorf("Unsupported dump version: %v", raw.Version)
 		}
-		if ((raw.Modificators & 0xfe) != 0) {
+		if ((raw.Modificators & (0xff ^ 0x03)) != 0) {
 			return fmt.Errorf("Unsupported modificators bitmask: %o %o", raw.Modificators)
 		}
 		if (raw.ChannelsNum == 0) {
@@ -83,6 +89,7 @@ func ParseVoltloggerDump(dumpPath string, noHeaders bool, channelsNum int, heade
 		// Filling the VoltloggerDump struct
 		r.DeviceName		= strings.Trim(string(raw.DeviceName[:]), "\000")
 		r.NoClock		= (raw.Modificators & 0x01 != 0)
+		r.Bitness8ADC		= (raw.Modificators & 0x02 != 0)
 		r.BlockWriteClockDelay	= int64(raw.BlockWriteClockDelay)
 
 		err = headerHandler(r, arg);
@@ -93,7 +100,7 @@ func ParseVoltloggerDump(dumpPath string, noHeaders bool, channelsNum int, heade
 		r.ChannelsNum = int(raw.ChannelsNum)
 	}
 
-	if (r.ChannelsNum > 0) {
+	if (channelsNum > 0) {
 		r.ChannelsNum = channelsNum
 	}
 
@@ -139,7 +146,14 @@ func ParseVoltloggerDump(dumpPath string, noHeaders bool, channelsNum int, heade
 
 		row := make([]int32, r.ChannelsNum)
 		for i:=0; i < r.ChannelsNum; i++ {
-			value, err := get16(dumpFile)
+			var value uint16
+			if (r.Bitness8ADC == true) {
+				var value8 uint8
+				value8, err = get8(dumpFile)
+				value = uint16(value8)
+			} else {
+				value,  err = get16(dumpFile)
+			}
 			if (err != nil) {
 				break
 			}
